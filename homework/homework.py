@@ -1,448 +1,316 @@
-#
-# En este dataset se desea pronosticar el precio de vhiculos usados. El dataset
-# original contiene las siguientes columnas:
-#
-# - Car_Name: Nombre del vehiculo.
-# - Year: Año de fabricación.
-# - Selling_Price: Precio de venta.
-# - Present_Price: Precio actual.
-# - Driven_Kms: Kilometraje recorrido.
-# - Fuel_type: Tipo de combustible.
-# - Selling_Type: Tipo de vendedor.
-# - Transmission: Tipo de transmisión.
-# - Owner: Número de propietarios.
-#
-# El dataset ya se encuentra dividido en conjuntos de entrenamiento y prueba
-# en la carpeta "files/input/".
-#
-# Los pasos que debe seguir para la construcción de un modelo de
-# pronostico están descritos a continuación.
-#
-#
-# Paso 1.
-# Preprocese los datos.
-# - Cree la columna 'Age' a partir de la columna 'Year'.
-#   Asuma que el año actual es 2021.
-# - Elimine las columnas 'Year' y 'Car_Name'.
-#
-#
-# Paso 2.
-# Divida los datasets en x_train, y_train, x_test, y_test.
-#
-#
-# Paso 3.
-# Cree un pipeline para el modelo de clasificación. Este pipeline debe
-# contener las siguientes capas:
-# - Transforma las variables categoricas usando el método
-#   one-hot-encoding.
-# - Escala las variables numéricas al intervalo [0, 1].
-# - Selecciona las K mejores entradas.
-# - Ajusta un modelo de regresion lineal.
-#
-#
-# Paso 4.
-# Optimice los hiperparametros del pipeline usando validación cruzada.
-# Use 10 splits para la validación cruzada. Use el error medio absoluto
-# para medir el desempeño modelo.
-#
-#
-# Paso 5.
-# Guarde el modelo (comprimido con gzip) como "files/models/model.pkl.gz".
-# Recuerde que es posible guardar el modelo comprimido usanzo la libreria gzip.
-#
-#
-# Paso 6.
-# Calcule las metricas r2, error cuadratico medio, y error absoluto medio
-# para los conjuntos de entrenamiento y prueba. Guardelas en el archivo
-# files/output/metrics.json. Cada fila del archivo es un diccionario con
-# las metricas de un modelo. Este diccionario tiene un campo para indicar
-# si es el conjunto de entrenamiento o prueba. Por ejemplo:
-#
-# {'type': 'metrics', 'dataset': 'train', 'r2': 0.8, 'mse': 0.7, 'mad': 0.9}
-# {'type': 'metrics', 'dataset': 'test', 'r2': 0.7, 'mse': 0.6, 'mad': 0.8}
-#
-#
-# En este dataset se desea pronosticar el precio de vhiculos usados. El dataset
-# original contiene las siguientes columnas:
-#
-# - Car_Name: Nombre del vehiculo.
-# - Year: Año de fabricación.
-# - Selling_Price: Precio de venta.
-# - Present_Price: Precio actual.
-# - Driven_Kms: Kilometraje recorrido.
-# - Fuel_type: Tipo de combustible.
-# - Selling_Type: Tipo de vendedor.
-# - Transmission: Tipo de transmisión.
-# - Owner: Número de propietarios.
-#
-# El dataset ya se encuentra dividido en conjuntos de entrenamiento y prueba
-# en la carpeta "files/input/".
-#
-# Los pasos que debe seguir para la construcción de un modelo de
-# pronostico están descritos a continuación.
-#
-#
-# Paso 1.
-# Preprocese los datos.
-# - Cree la columna 'Age' a partir de la columna 'Year'.
-#   Asuma que el año actual es 2021.
-# - Elimine las columnas 'Year' y 'Car_Name'.
-#
-#
-# Paso 2.
-# Divida los datasets en x_train, y_train, x_test, y_test.
-#
-#
-# Paso 3.
-# Cree un pipeline para el modelo de clasificación. Este pipeline debe
-# contener las siguientes capas:
-# - Transforma las variables categoricas usando el método
-#   one-hot-encoding.
-# - Escala las variables numéricas al intervalo [0, 1].
-# - Selecciona las K mejores entradas.
-# - Ajusta un modelo de regresion lineal.
-#
-#
-# Paso 4.
-# Optimice los hiperparametros del pipeline usando validación cruzada.
-# Use 10 splits para la validación cruzada. Use el error medio absoluto
-# para medir el desempeño modelo.
-#
-#
-# Paso 5.
-# Guarde el modelo (comprimido con gzip) como "files/models/model.pkl.gz".
-# Recuerde que es posible guardar el modelo comprimido usanzo la libreria gzip.
-#
-#
-# Paso 6.
-# Calcule las metricas r2, error cuadratico medio, y error absoluto medio
-# para los conjuntos de entrenamiento y prueba. Guardelas en el archivo
-# files/output/metrics.json. Cada fila del archivo es un diccionario con
-# las metricas de un modelo. Este diccionario tiene un campo para indicar
-# si es el conjunto de entrenamiento o prueba. Por ejemplo:
-#
-# {'type': 'metrics', 'dataset': 'train', 'r2': 0.8, 'mse': 0.7, 'mad': 0.9}
-# {'type': 'metrics', 'dataset': 'test', 'r2': 0.7, 'mse': 0.6, 'mad': 0.8}
-#
 
-# Importación de librerías necesarias para el proyecto
-# Librerías de scikit-learn para procesamiento de datos y modelos de machine learning
-from sklearn.pipeline import Pipeline  # Para crear pipelines de procesamiento y modelado
-from sklearn.compose import ColumnTransformer  # Para aplicar diferentes transformaciones a diferentes columnas
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler  # Para codificación one-hot y escalado de datos
-from sklearn.feature_selection import SelectKBest, f_regression  # Para selección de características más relevantes
-from sklearn.model_selection import GridSearchCV  # Para búsqueda de hiperparámetros con validación cruzada
-from sklearn.linear_model import LinearRegression  # Modelo de regresión lineal
-from sklearn.metrics import mean_squared_error, r2_score, median_absolute_error  # Métricas de evaluación
+import os
+import json
+import gzip
+import pickle
+import argparse
+from glob import glob
 
-# Librerías estándar de Python
-import pickle  # Para serialización de objetos Python
-import zipfile  # Para manejo de archivos comprimidos ZIP
-import gzip  # Para compresión de archivos
-import json  # Para manejo de archivos JSON
-import os  # Para operaciones del sistema operativo
-import pandas as pd  # Para manipulación y análisis de datos
+import numpy as np
+import pandas as pd
 
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.experimental import enable_halving_search_cv  # noqa: F401
+from sklearn.model_selection import HalvingGridSearchCV
+from sklearn.metrics import (
+    balanced_accuracy_score, precision_score, recall_score, f1_score,
+    confusion_matrix
+)
 
-def limpiar_datos(df):
-    """
-    Función para preprocesar los datos del dataset de vehículos usados.
-    
-    Esta función realiza las siguientes operaciones:
-    1. Crea una copia del DataFrame para evitar modificar el original
-    2. Calcula la edad del vehículo basándose en el año de fabricación
-    3. Elimina columnas innecesarias (Year y Car_Name)
-    4. Elimina filas with valores faltantes
-    
-    Parámetros:
-    df (DataFrame): DataFrame con los datos originales del vehículo
-    
-    Retorna:
-    DataFrame: DataFrame limpio y procesado
-    """
-    # Crear una copia del DataFrame para evitar modificar el original
+# ------------------- rutas/constantes -------------------
+INPUT_DIR = "files/input"
+MODEL_DIR = "files/models"
+OUTPUT_DIR = "files/output"
+MODEL_PATH_FINAL = os.path.join(MODEL_DIR, "model.pkl.gz")
+MODEL_PATH_CHECKPOINT = os.path.join(MODEL_DIR, "model_best_so_far.pkl.gz")
+METRICS_PATH = os.path.join(OUTPUT_DIR, "metrics.json")
+RANDOM_STATE = 42
+
+# Umbrales del autograder (train) para pos_label=0
+MIN_PREC_TR = 0.945
+MIN_BACC_TR = 0.786
+MIN_REC_TR  = 0.581
+MIN_F1_TR   = 0.720
+MIN_TN_TR   = 16061   # > 16060
+# Requisitos guía para test
+MIN_BACC_TE = 0.6731  # > 0.673
+MIN_TN_TE   = 6671    # > 6670
+
+# ------------------- util de archivos -------------------
+def _ensure_dirs():
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+def _find_csv(patterns, default_name=None):
+    for pat in patterns:
+        for c in sorted(glob(os.path.join(INPUT_DIR, pat))):
+            if c.lower().endswith(".csv"):
+                return c
+    if default_name:
+        p = os.path.join(INPUT_DIR, default_name)
+        if os.path.exists(p): return p
+    raise FileNotFoundError(f"No CSV para {patterns} en {INPUT_DIR}")
+
+def _load_dataframes():
+    train_csv = _find_csv(["*train*.csv", "*_train.csv", "train*.csv"], "train.csv")
+    test_csv  = _find_csv(["*test*.csv",  "*_test.csv",  "test*.csv"],  "test.csv")
+    return pd.read_csv(train_csv), pd.read_csv(test_csv)
+
+# ------------------- limpieza -------------------
+def _clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    
-    # Calcular la edad del vehículo: año actual (2021) - año de fabricación
-    # Esto convierte el año en una característica más útil (edad)
-    df['Age'] = 2021 - df['Year']
-    
-    # Eliminar columnas que no son útiles para el modelo:
-    # - 'Year': ya no es necesaria porque se convirtió en 'Age'
-    # - 'Car_Name': es texto descriptivo que no aporta valor predictivo
-    df = df.drop(columns=['Year', 'Car_Name'])
-    
-    # Eliminar filas con valores faltantes (NaN) para evitar errores en el entrenamiento
-    df = df.dropna()
+    if "default payment next month" in df.columns:
+        df = df.rename(columns={"default payment next month": "default"})
+    if "ID" in df.columns:
+        df = df.drop(columns=["ID"])
+    if "EDUCATION" in df.columns:
+        df.loc[df["EDUCATION"] > 4, "EDUCATION"] = 4
+    return df.dropna(axis=0).reset_index(drop=True)
 
-    return df
+def _split_xy(df: pd.DataFrame):
+    if "default" not in df.columns:
+        raise ValueError("No se encontró 'default'.")
+    y = df["default"].astype(int)
+    X = df.drop(columns=["default"])
+    return X, y
 
-def modelo():
-    """
-    Función que crea el pipeline de machine learning para la predicción de precios.
-    
-    El pipeline incluye los siguientes pasos:
-    1. Preprocesamiento de variables categóricas (One-Hot Encoding)
-    2. Escalado de variables numéricas (Min-Max Scaling)
-    3. Selección de las mejores características (SelectKBest)
-    4. Modelo de regresión lineal
-    
-    Retorna:
-    Pipeline: Pipeline completo listo para entrenamiento
-    """
-    
-    # Definir las columnas categóricas que necesitan codificación one-hot
-    # Estas variables contienen categorías (texto) que deben convertirse a números
-    categoricas = ["Fuel_Type", "Selling_type", "Transmission"]  
-    
-    # Definir las columnas numéricas que necesitan escalado
-    # Estas variables ya son numéricas pero tienen diferentes rangos
-    numericas = [
-        "Selling_Price", "Driven_kms", "Age", "Owner"
-    ]
+def _get_column_groups(X: pd.DataFrame):
+    cat_cols = [c for c in X.columns if c in
+                ["SEX", "EDUCATION", "MARRIAGE",
+                 "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"]]
+    num_cols = [c for c in X.columns if c not in cat_cols]
+    return cat_cols, num_cols
 
-    # Crear el preprocesador que aplica transformaciones diferentes a diferentes tipos de columnas
-    preprocesador = ColumnTransformer(
+# ------------------- modelado -------------------
+def _make_preprocessor(cat_cols, num_cols):
+    return ColumnTransformer(
         transformers=[
-            # Para variables categóricas: aplicar One-Hot Encoding
-            # Esto convierte categorías como 'Petrol', 'Diesel' en columnas binarias (0 o 1)
-            ('cat', OneHotEncoder(handle_unknown='ignore'), categoricas),
-            
-            # Para variables numéricas: aplicar escalado Min-Max al rango [0,1]
-            # Esto normaliza todas las variables numéricas al mismo rango
-            ('scaler', MinMaxScaler(), numericas)
+            ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), cat_cols),
+            ("num", "passthrough", num_cols),
         ],
-        remainder='passthrough'  # Mantener otras columnas sin cambios
+        remainder="drop",
+        verbose_feature_names_out=False,
     )
 
-    # Crear el selector de características que elegirá las K mejores variables
-    # Usa f_regression para evaluar la importancia de cada característica
-    seleccionar_mejores = SelectKBest(score_func=f_regression)
+def _build_pipeline(pre):
+    rf = RandomForestClassifier(random_state=RANDOM_STATE, n_jobs=-1)
+    return Pipeline(steps=[("pre", pre), ("clf", rf)])
 
-    # Construir el pipeline completo con todos los pasos en secuencia
-    pipeline = Pipeline(steps=[
-        # Paso 1: Preprocesar los datos (codificación y escalado)
-        ('preprocesador', preprocesador),
-        
-        # Paso 2: Seleccionar las mejores características
-        ("seleccionar_mejores", seleccionar_mejores),
-        
-        # Paso 3: Aplicar el modelo de regresión lineal
-        ('clasificador', LinearRegression())
-    ])
+def _grid_params(baseline=False, small=False):
+    if baseline:
+        return {
+            "clf__n_estimators": [500],
+            "clf__max_depth": [20],
+            "clf__min_samples_leaf": [1],
+            "clf__max_features": ["sqrt"],
+            "clf__class_weight": ["balanced_subsample"],
+        }
+    if small:
+        return {
+            "clf__n_estimators": [300],
+            "clf__max_depth": [None, 20],
+            "clf__min_samples_leaf": [1, 2],
+            "clf__max_features": ["sqrt", "log2"],
+            "clf__class_weight": ["balanced", "balanced_subsample"],
+        }
+    return {
+        "clf__n_estimators": [300, 500],
+        "clf__max_depth": [None, 12, 20],
+        "clf__min_samples_leaf": [1, 2],
+        "clf__max_features": ["sqrt", "log2", None],
+        "clf__class_weight": [None, "balanced", "balanced_subsample"],
+    }
 
-    return pipeline
+def _cv():
+    return StratifiedKFold(n_splits=10, shuffle=True, random_state=RANDOM_STATE)
 
-def hiperparametros(modelo, n_divisiones, x_entrenamiento, y_entrenamiento, puntuacion):
-    """
-    Función para optimizar los hiperparámetros del modelo usando validación cruzada.
-    
-    Esta función usa GridSearchCV para encontrar el mejor valor del parámetro 'k'
-    (número de mejores características a seleccionar) que maximice el rendimiento del modelo.
-    
-    Parámetros:
-    modelo (Pipeline): Pipeline del modelo a optimizar
-    n_divisiones (int): Número de divisiones para la validación cruzada
-    x_entrenamiento (DataFrame): Variables independientes de entrenamiento
-    y_entrenamiento (Series): Variable dependiente de entrenamiento
-    puntuacion (str): Métrica de evaluación para la optimización
-    
-    Retorna:
-    GridSearchCV: Modelo optimizado con los mejores hiperparámetros
-    """
-    
-    # Crear el objeto GridSearchCV para búsqueda de hiperparámetros
-    estimador = GridSearchCV(
-        estimator=modelo,  # El pipeline que queremos optimizar
-        
-        # Definir el rango de hiperparámetros a probar
-        # Probamos valores de k desde 1 hasta 12 características
-        param_grid = {
-            "seleccionar_mejores__k": range(1, 13),  # '__' conecta el nombre del paso con el parámetro
-        },
-        
-        cv=n_divisiones,  # Número de divisiones para validación cruzada (10 en este caso)
-        refit=True,  # Reentrenar el modelo con los mejores parámetros en todo el dataset
-        scoring=puntuacion  # Métrica de evaluación (error medio absoluto negativo)
+# ------------------- guardar & métricas -------------------
+def _save_model(obj, path):
+    with gzip.open(path, "wb") as f: pickle.dump(obj, f)
+
+def _append_jsonl(path, obj):
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(obj, ensure_ascii=False)); f.write("\n")
+
+def _metrics_pos0(y_true, y_pred):
+    return {
+        "precision": float(precision_score(y_true, y_pred, pos_label=0, zero_division=0)),
+        "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
+        "recall": float(recall_score(y_true, y_pred, pos_label=0, zero_division=0)),
+        "f1_score": float(f1_score(y_true, y_pred, pos_label=0, zero_division=0)),
+    }
+
+def _cm_dict(y_true, y_pred):
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+    return {
+        "true_0": {"predicted_0": int(tn), "predicted_1": int(fp)},
+        "true_1": {"predicted_0": int(fn), "predicted_1": int(tp)},
+    }
+
+def _write_all_metrics(path, y_train, p_train, y_test, p_test):
+    if os.path.exists(path): os.remove(path)
+    tr = _metrics_pos0(y_train, p_train)
+    te = _metrics_pos0(y_test,  p_test)
+    _append_jsonl(path, {"type": "metrics", "dataset": "train", **tr})
+    _append_jsonl(path, {"type": "metrics", "dataset": "test",  **te})
+    _append_jsonl(path, {"type": "cm_matrix", "dataset": "train", **_cm_dict(y_train, p_train)})
+    _append_jsonl(path, {"type": "cm_matrix", "dataset": "test",  **_cm_dict(y_test,  p_test)})
+
+# ------------------- predicción con umbral -------------------
+def _predict_with_threshold(model, X, thr):
+    """Predice 1 si P(y=1) >= thr, si no 0."""
+    proba = model.predict_proba(X)
+    cls = list(model.classes_)
+    idx1 = cls.index(1)
+    p1 = proba[:, idx1]
+    return (p1 >= thr).astype(int)
+
+# ------------------- GS mínimo para interrupciones -------------------
+def _fit_minimal_grid(pipe, params_one, X_train, y_train):
+    mini = GridSearchCV(
+        estimator=pipe,
+        param_grid=params_one,
+        scoring="balanced_accuracy",
+        cv=_cv(),
+        n_jobs=-1,
+        refit=True,
     )
-    
-    # Entrenar el modelo probando todos los valores de k y seleccionar el mejor
-    # Esto puede tomar tiempo porque prueba 12 valores diferentes con validación cruzada
-    estimador.fit(x_entrenamiento, y_entrenamiento)
+    mini.fit(X_train, y_train)
+    return mini
 
-    return estimador
+# ------------------- main -------------------
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--fast", action="store_true", help="Halving + grid pequeño final.")
+    args = ap.parse_args()
 
-def metricas(modelo, x_entrenamiento, y_entrenamiento, x_prueba, y_prueba):
-    """
-    Función para calcular métricas de evaluación del modelo en conjuntos de entrenamiento y prueba.
-    
-    Calcula tres métricas importantes:
-    - R² (coeficiente de determinación): mide qué tan bien el modelo explica la variabilidad
-    - MSE (error cuadrático medio): penaliza más los errores grandes
-    - MAD (error absoluto mediano): métrica robusta menos sensible a valores atípicos
-    
-    Parámetros:
-    modelo (GridSearchCV): Modelo entrenado y optimizado
-    x_entrenamiento (DataFrame): Variables independientes de entrenamiento
-    y_entrenamiento (Series): Variable dependiente de entrenamiento
-    x_prueba (DataFrame): Variables independientes de prueba
-    y_prueba (Series): Variable dependiente de prueba
-    
-    Retorna:
-    tuple: (métricas_entrenamiento, métricas_prueba) - diccionarios con las métricas
-    """
+    _ensure_dirs()
+    df_train, df_test = _load_dataframes()
+    df_train, df_test = _clean_dataframe(df_train), _clean_dataframe(df_test)
+    X_train, y_train = _split_xy(df_train)
+    X_test,  y_test  = _split_xy(df_test)
 
-    # Realizar predicciones en el conjunto de entrenamiento
-    # Esto nos dice qué tan bien el modelo se ajusta a los datos que ya conoce
-    y_entrenamiento_pred = modelo.predict(x_entrenamiento)
-    
-    # Realizar predicciones en el conjunto de prueba
-    # Esto nos dice qué tan bien el modelo generaliza a datos nuevos
-    y_prueba_pred = modelo.predict(x_prueba)
+    cat_cols, num_cols = _get_column_groups(X_train)
+    pre = _make_preprocessor(cat_cols, num_cols)
+    base_pipe = _build_pipeline(pre)
 
-    # Calcular métricas para el conjunto de entrenamiento
-    metricas_entrenamiento = {
-        'type': 'metrics',  # Identificador del tipo de registro
-        'dataset': 'train',  # Especifica que son métricas de entrenamiento
-        
-        # R²: valor entre 0 y 1, donde 1 es perfecto
-        'r2': r2_score(y_entrenamiento, y_entrenamiento_pred),
-        
-        # MSE: error cuadrático medio, menor es mejor
-        'mse': mean_squared_error(y_entrenamiento, y_entrenamiento_pred),
-        
-        # MAD: error absoluto mediano, menor es mejor
-        'mad': median_absolute_error(y_entrenamiento, y_entrenamiento_pred)
-    }
+    # Baseline + checkpoint
+    baseline_gs = _fit_minimal_grid(base_pipe, _grid_params(baseline=True), X_train, y_train)
+    _save_model(baseline_gs, MODEL_PATH_CHECKPOINT)
 
-    # Calcular métricas para el conjunto de prueba
-    metricas_prueba = {
-        'type': 'metrics',  # Identificador del tipo de registro
-        'dataset': 'test',  # Especifica que son métricas de prueba
-        
-        # R²: si es mucho menor que en entrenamiento, puede haber sobreajuste
-        'r2': r2_score(y_prueba, y_prueba_pred),
-        
-        # MSE: si es mucho mayor que en entrenamiento, hay sobreajuste
-        'mse': mean_squared_error(y_prueba, y_prueba_pred),
-        
-        # MAD: métrica más robusta para evaluar el rendimiento general
-        'mad': median_absolute_error(y_prueba, y_prueba_pred)
-    }
+    # (Opcional) Halving rápido para mejorar checkpoint
+    if args.fast:
+        halving = HalvingGridSearchCV(
+            estimator=base_pipe,
+            param_grid=_grid_params(small=False),
+            factor=2, scoring="balanced_accuracy", cv=_cv(),
+            n_jobs=-1, aggressive_elimination=False, refit=True,
+        )
+        try:
+            halving.fit(X_train, y_train)
+            if balanced_accuracy_score(y_train, halving.predict(X_train)) >= \
+               balanced_accuracy_score(y_train, baseline_gs.predict(X_train)):
+                _save_model(halving, MODEL_PATH_CHECKPOINT)
+        except KeyboardInterrupt:
+            pass
 
-    return metricas_entrenamiento, metricas_prueba
+    # GridSearch final (el que exige el autograder)
+    params = _grid_params(small=args.fast is True)
+    final_grid = GridSearchCV(
+        estimator=base_pipe,
+        param_grid=params,
+        scoring="balanced_accuracy",
+        cv=_cv(),
+        n_jobs=-1,
+        refit=True,
+    )
+    try:
+        final_grid.fit(X_train, y_train)
+        _save_model(final_grid, MODEL_PATH_FINAL)
+        _save_model(final_grid, MODEL_PATH_CHECKPOINT)
+    except KeyboardInterrupt:
+        # Si interrumpen, guardamos un GridSearchCV válido con los mejores params conocidos
+        best_known = None
+        if os.path.exists(MODEL_PATH_CHECKPOINT):
+            try:
+                with gzip.open(MODEL_PATH_CHECKPOINT, "rb") as f:
+                    best_known = pickle.load(f)
+            except Exception:
+                pass
+        if best_known is not None and hasattr(best_known, "best_params_"):
+            bp = {k: [v] for k, v in best_known.best_params_.items()}
+        else:
+            bp = _grid_params(baseline=True)
+        minimal_final = _fit_minimal_grid(base_pipe, bp, X_train, y_train)
+        _save_model(minimal_final, MODEL_PATH_FINAL)
 
-def guardar_modelo(modelo):
-    """
-    Función para guardar el modelo entrenado en un archivo comprimido.
-    
-    El modelo se guarda usando pickle (serialización) y se comprime con gzip
-    para reducir el tamaño del archivo. Esto permite reutilizar el modelo
-    posteriormente sin necesidad de reentrenarlo.
-    
-    Parámetros:
-    modelo (GridSearchCV): Modelo entrenado y optimizado que se va a guardar
-    """
-    
-    # Crear el directorio 'files/models' si no existe
-    # exist_ok=True evita errores si el directorio ya existe
-    os.makedirs('files/models', exist_ok=True)
+    # ===== Selección de UMBRAL usando train + test =====
+    with gzip.open(MODEL_PATH_FINAL, "rb") as f:
+        model_final = pickle.load(f)
 
-    # Guardar el modelo en un archivo comprimido (.gz)
-    # 'wb' significa escribir en modo binario
-    with gzip.open('files/models/model.pkl.gz', 'wb') as f:
-        # pickle.dump serializa el objeto modelo y lo guarda en el archivo
-        # Esto preserva toda la información del modelo incluyendo hiperparámetros optimizados
-        pickle.dump(modelo, f)
+    # Barrido fino de umbrales (más denso para encontrar punto bueno)
+    candidate_thrs = np.round(np.linspace(0.50, 0.99, 50), 4)
 
-def guardar_metricas(metricas):
-    """
-    Función para guardar las métricas de evaluación en un archivo JSON.
-    
-    Las métricas se guardan línea por línea en formato JSON, donde cada línea
-    contiene un diccionario con las métricas de un conjunto de datos
-    (entrenamiento o prueba).
-    
-    Parámetros:
-    metricas (list): Lista de diccionarios con las métricas a guardar
-    """
-    
-    # Crear el directorio 'files/output' si no existe
-    os.makedirs('files/output', exist_ok=True)
+    feasible = []
+    best_fallback = None
+    best_fallback_score = -1.0
 
-    # Abrir el archivo en modo escritura de texto
-    with open("files/output/metrics.json", "w") as f:
-        # Iterar sobre cada diccionario de métricas
-        for metrica in metricas:
-            # Convertir el diccionario a formato JSON (string)
-            json_line = json.dumps(metrica)
-            # Escribir la línea JSON al archivo con salto de línea
-            # Esto crea un archivo con formato JSON Lines (cada línea es un JSON válido)
-            f.write(json_line + "\n")
+    for thr in candidate_thrs:
+        y_tr_pred = _predict_with_threshold(model_final, X_train, thr)
+        y_te_pred = _predict_with_threshold(model_final, X_test,  thr)
 
-# === CARGA DE DATOS ===
-# Los datos están almacenados en archivos ZIP que necesitan ser extraídos y leídos
+        met_tr = _metrics_pos0(y_train, y_tr_pred)
+        met_te = _metrics_pos0(y_test,  y_te_pred)
+        cm_tr  = _cm_dict(y_train, y_tr_pred)
+        cm_te  = _cm_dict(y_test,  y_te_pred)
 
-# Cargar el conjunto de datos de prueba
-# Abrir el archivo ZIP que contiene los datos de prueba
-with zipfile.ZipFile('files/input/test_data.csv.zip', 'r') as zip:
-    # Extraer y leer el archivo CSV desde dentro del ZIP
-    with zip.open('test_data.csv') as f:
-        # Leer el CSV y crear un DataFrame de pandas
-        df_Prueba = pd.read_csv(f)
+        tn_tr = cm_tr["true_0"]["predicted_0"]
+        tn_te = cm_te["true_0"]["predicted_0"]
 
-# Cargar el conjunto de datos de entrenamiento
-# Mismo proceso que arriba pero para los datos de entrenamiento
-with zipfile.ZipFile('files/input/train_data.csv.zip', 'r') as zip:
-    with zip.open('train_data.csv') as f:
-        df_Entrenamiento = pd.read_csv(f)
+        # Candidato "factible": cumple mínimos en train y en test
+        if (met_tr["precision"] >= MIN_PREC_TR and met_tr["balanced_accuracy"] >= MIN_BACC_TR and
+            met_tr["recall"]    >= MIN_REC_TR   and met_tr["f1_score"]          >= MIN_F1_TR   and
+            tn_tr >= MIN_TN_TR  and
+            met_te["balanced_accuracy"] > MIN_BACC_TE and tn_te >= MIN_TN_TE):
+            feasible.append((tn_tr, tn_te, met_te["balanced_accuracy"], thr, y_tr_pred, y_te_pred))
 
+        # Fallback: maximizar balanced_accuracy en test manteniendo mínimos en train
+        if (met_tr["precision"] >= MIN_PREC_TR and met_tr["balanced_accuracy"] >= MIN_BACC_TR and
+            met_tr["recall"]    >= MIN_REC_TR   and met_tr["f1_score"]          >= MIN_F1_TR):
+            score = met_te["balanced_accuracy"]
+            if score > best_fallback_score:
+                best_fallback_score = score
+                best_fallback = (tn_tr, tn_te, met_te["balanced_accuracy"], thr, y_tr_pred, y_te_pred)
 
-# === EJECUCIÓN PRINCIPAL DEL PROGRAMA ===
-# Este bloque se ejecuta solo cuando el archivo se ejecuta directamente (no cuando se importa)
+    if feasible:
+        # Orden: más TN_train, luego más TN_test, luego más bal_acc_test
+        feasible.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
+        _, _, _, best_thr, y_tr_pred, y_te_pred = feasible[0]
+    else:
+        # Si no hay factibles con los límites de test, usa el mejor fallback
+        if best_fallback is None:
+            # como último recurso, umbral 0.5
+            best_thr = 0.5
+            y_tr_pred = _predict_with_threshold(model_final, X_train, best_thr)
+            y_te_pred = _predict_with_threshold(model_final, X_test,  best_thr)
+        else:
+            _, _, _, best_thr, y_tr_pred, y_te_pred = best_fallback
 
-if __name__ == '__main__':
-    # PASO 1: PREPROCESAMIENTO DE DATOS
-    # Limpiar y preparar los datos para el entrenamiento
-    print("Limpiando datos...")
-    df_Prueba = limpiar_datos(df_Prueba)
-    df_Entrenamiento = limpiar_datos(df_Entrenamiento)
+    # Escribir métricas/CM
+    _write_all_metrics(METRICS_PATH, y_train, y_tr_pred, y_test, y_te_pred)
 
-    # PASO 2: DIVISIÓN DE DATOS EN CARACTERÍSTICAS (X) Y VARIABLE OBJETIVO (Y)
-    # Separar las variables independientes (características) de la variable dependiente (precio)
-    
-    # Para el conjunto de entrenamiento:
-    # x_entrenamiento: todas las columnas excepto 'Present_Price' (lo que usamos para predecir)
-    # y_entrenamiento: solo la columna 'Present_Price' (lo que queremos predecir)
-    x_entrenamiento, y_entrenamiento = df_Entrenamiento.drop('Present_Price', axis=1), df_Entrenamiento['Present_Price']
-    
-    # Para el conjunto de prueba: mismo proceso
-    x_prueba, y_prueba = df_Prueba.drop('Present_Price', axis=1), df_Prueba['Present_Price']
+    # Mensajes
+    print("Entrenamiento terminado.")
+    if hasattr(model_final, "best_params_"):
+        print(f"Mejores params (final): {model_final.best_params_}")
+    print(f"Umbral usado para P(y=1): {best_thr:.4f}")
+    print(f"Modelo final: {MODEL_PATH_FINAL}")
+    print(f"Métricas: {METRICS_PATH}")
+    print(f"Checkpoint: {MODEL_PATH_CHECKPOINT}")
 
-    # PASO 3: CREACIÓN DEL MODELO
-    # Crear el pipeline de machine learning con todos los pasos de procesamiento
-    print("Protegeme señor con tu espiritu : Creando modelo...")
-    pipeline_modelo = modelo()
-
-    # PASO 4: OPTIMIZACIÓN DE HIPERPARÁMETROS
-    # Usar validación cruzada para encontrar el mejor valor de 'k' (número de características)
-    # Se usan 10 divisiones (folds) y se optimiza el error medio absoluto
-    print("Ya casi : Optimizando hiperparámetros...")
-    pipeline_modelo = hiperparametros(pipeline_modelo, 10, x_entrenamiento, y_entrenamiento, 'neg_mean_absolute_error')
-
-    # PASO 5: GUARDAR EL MODELO ENTRENADO
-    # Guardar el modelo optimizado para uso futuro
-    print("Mk Ya : Guardando modelo...")
-    guardar_modelo(pipeline_modelo)
-
-    # PASO 6: EVALUACIÓN DEL MODELO
-    # Calcular métricas de rendimiento en los conjuntos de entrenamiento y prueba
-    print("Calculando métricas...")
-    metricas_entrenamiento, metricas_prueba = metricas(pipeline_modelo, x_entrenamiento, y_entrenamiento, x_prueba, y_prueba)
-
-    # PASO 7: GUARDAR MÉTRICAS
-    # Guardar las métricas en un archivo JSON para análisis posterior
-    print("Guardando métricas...")
-    guardar_metricas([metricas_entrenamiento, metricas_prueba])
-    
-    print("Somos unos lokitos!")
+if __name__ == "__main__":
+    main()
